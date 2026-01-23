@@ -11,5 +11,6 @@ func Init() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(AuthCmd())
+	rootCmd.AddCommand(LocationCmd())
 	return rootCmd
 }

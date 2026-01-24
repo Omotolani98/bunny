@@ -1,11 +1,13 @@
 package impl
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
+	"slices"
 
 	"github.com/Omotolani98/bunny/internal/errors"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
@@ -57,7 +59,6 @@ func getHomeDir() (string, error) {
 	}
 
 	homeDir := usr.HomeDir
-	fmt.Printf("HomeDir: %s\n", homeDir)
 	return homeDir, nil
 }
 
@@ -95,4 +96,73 @@ func (h *Hetzner) Locations() ([]*hcloud.Location, error) {
 	}
 
 	return client.Location.All(context.Background())
+}
+
+func (h *Hetzner) Types(location string) ([]ServerType, error) {
+	client, err := InitClient()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.ServerType.All(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	// serverTypes := make([]ServerType, 0)
+	// for _, v := range resp {
+	// 	st := ServerType{
+	// 		Type: v.Name,
+	// 		Cpu: fmt.Sprintf("%d vCPU", v.Cores),
+	// 		Ram: fmt.Sprintf("%f GB", v.Memory),
+	// 		Disk: fmt.Sprintf("%d GB", v.Disk),
+	// 		Price: v.Pricings[0].Monthly.Net,
+	// 	}
+	// 	serverTypes = append(serverTypes, st)
+	// }
+	//
+	serverTypes := make([]ServerType, 0)
+
+	for _, v := range resp {	
+		var price string
+
+		if location != "" {
+			found := false
+			for _, loc := range v.Locations {
+				if loc.Location.Name == location {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+
+			for _, p := range v.Pricings {
+				if p.Location != nil && p.Location.Name == location {
+					price = p.Monthly.Net
+					break
+				}
+			}
+		} else {
+			if len(v.Pricings) > 0 {
+				price = v.Pricings[0].Monthly.Net
+			}
+		}
+
+		st := ServerType{
+			Type:  v.Name,
+			Cpu:   fmt.Sprintf("%d vCPU", v.Cores),
+			Ram:   fmt.Sprintf("%.1f GB", v.Memory),
+			Disk:  fmt.Sprintf("%d GB", v.Disk),
+			Price: price,
+		}
+		serverTypes = append(serverTypes, st)
+	}
+
+	slices.SortFunc(serverTypes, func(a, b ServerType) int {
+		return cmp.Compare(a.Type, b.Type)
+	})
+
+	return serverTypes, nil
 }

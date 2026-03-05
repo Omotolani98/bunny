@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Omotolani98/bunny/internal/cloud/impl"
+	"github.com/Omotolani98/bunny/internal/provider/hetzner"
 )
 
 type CloudManager struct {
@@ -23,29 +23,12 @@ func NewCloudManagerWithVM(host, user, key string) *CloudManager {
 	}
 }
 
-// func NewCloudManagerWithProvider(providerName, token string) *CloudManager {
-// 	var provider Cloud
-// 	switch providerName {
-// 	case "hetzner":
-// 		provider = impl.NewHetzner(token)
-// 		// case "aws":
-// 		// 	provider = NewAWS(token)
-// 	}
-
-// 	return &CloudManager{
-// 		Config:   loadConfig(),
-// 		Provider: provider,
-// 	}
-// }
-
 func NewCloudManagerWithProvider(providerName string, credentials map[string]string) *CloudManager {
 	var provider Cloud
 
 	switch providerName {
 	case "hetzner":
-		provider = impl.NewHetzner(credentials["token"])
-		// case "aws":
-		// 	provider = NewAWS(credentials["access_key_id"], credentials["secret_access_key"], credentials["region"])
+		provider = hetzner.NewHetzner(credentials["token"])
 	}
 
 	return &CloudManager{
@@ -57,7 +40,7 @@ func NewCloudManagerWithProvider(providerName string, credentials map[string]str
 func GetCloud(cloudProvider string) (Cloud, error) {
 	switch cloudProvider {
 	case "hetzner":
-		return impl.Hetzner{}, nil
+		return hetzner.Hetzner{}, nil
 	default:
 		return nil, errors.New("cloud provider not recognized")
 	}
@@ -148,55 +131,4 @@ func (m *CloudManager) SaveConfig() error {
 	}
 
 	return os.WriteFile(filepath.Join(dir, "config.json"), data, 0644)
-}
-
-func loadConfig() *BunnyConfig {
-	home, _ := os.UserHomeDir()
-	path := filepath.Join(home, ".bunny", "config.json")
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return &BunnyConfig{
-			Version: "1",
-			Clouds:  make(map[string]CloudProp),
-			Apps:    make(map[string]AppProp),
-			VMs:     make(map[string]VMProp),
-		}
-	}
-
-	var config BunnyConfig
-	json.Unmarshal(data, &config)
-	return &config
-}
-
-func InitBunnyDir() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	dir := filepath.Join(home, ".bunny")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	configPath := filepath.Join(dir, "config.json")
-
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		config := BunnyConfig{
-			Version: "1",
-			Clouds:  make(map[string]CloudProp),
-			Apps:    make(map[string]AppProp),
-			VMs:     make(map[string]VMProp),
-		}
-
-		data, err := json.MarshalIndent(config, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		return os.WriteFile(configPath, data, 0644)
-	}
-
-	return nil
 }

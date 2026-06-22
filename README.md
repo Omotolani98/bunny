@@ -11,6 +11,5 @@ On installation, `~/.bunny/` is created in home directory.
 
 ![Screenshot](images/bunny.png)
 
-
 > Disclaimer: This documentation will be updated
 > overtime. Tool is a work in progress
